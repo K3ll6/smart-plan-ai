@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SMART PLAN – Trợ lý AI</title>
+<link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">SP</div><div><b>SMART PLAN</b><small>Trợ lý AI điều hành</small></div></div>
+    <nav>
+      <button class="nav active" data-view="dashboard">⌂ Tổng quan</button>
+      <button class="nav" data-view="tasks">☷ Nhiệm vụ</button>
+      <button class="nav" data-view="timeline">◷ Timeline</button>
+      <button class="nav" data-view="ai">✦ SMART AI</button>
+    </nav>
+    <div class="side-bottom">
+      <div class="status"><span></span><div><b>Hệ thống sẵn sàng</b><small id="sysStatus">Đang kiểm tra...</small></div></div>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div><span class="eyebrow">QUẢN LÝ KẾ HOẠCH CÔNG TÁC TUẦN</span><h1 id="pageTitle">Tổng quan</h1></div>
+      <label class="upload"><input type="file" id="file" accept=".docx,.pdf,.jpg,.jpeg,.png"/><span>＋ Upload kế hoạch</span></label>
+    </header>
+
+    <section id="dashboard" class="view active">
+      <div class="hero">
+        <div><span class="pill">AI POWERED</span><h2>Biến kế hoạch thành hành động.</h2><p>Upload kế hoạch Word, PDF hoặc hình ảnh. SMART PLAN tự bóc tách nhiệm vụ, sắp xếp thời gian và hỗ trợ xây dựng hướng tổ chức, triển khai.</p></div>
+        <div class="hero-icon">✦</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><small>TỔNG NHIỆM VỤ</small><strong id="total">0</strong></div>
+        <div class="stat"><small>ƯU TIÊN CAO</small><strong id="high">0</strong></div>
+        <div class="stat"><small>ĐANG THỰC HIỆN</small><strong id="doing">0</strong></div>
+        <div class="stat"><small>HOÀN THÀNH</small><strong id="done">0</strong></div>
+      </div>
+      <div class="panel"><div class="panel-head"><div><span class="eyebrow">NEXT UP</span><h3>Nhiệm vụ sắp tới</h3></div><button class="ghost" onclick="showView('tasks')">Xem tất cả →</button></div><div id="nextTasks" class="task-list"></div></div>
+    </section>
+
+    <section id="tasks" class="view">
+      <div class="panel"><div class="panel-head"><div><span class="eyebrow">TASK MANAGEMENT</span><h3>Danh sách nhiệm vụ</h3></div><select id="filter" onchange="render()"><option value="ALL">Tất cả</option><option value="HIGH">Ưu tiên cao</option><option value="DOING">Đang thực hiện</option><option value="DONE">Hoàn thành</option></select></div><div id="allTasks" class="task-list"></div></div>
+    </section>
+
+    <section id="timeline" class="view">
+      <div class="panel"><div class="panel-head"><div><span class="eyebrow">TIMELINE</span><h3>Dòng thời gian kế hoạch</h3></div></div><div id="timelineList"></div></div>
+    </section>
+
+    <section id="ai" class="view">
+      <div class="chat panel"><div class="panel-head"><div><span class="eyebrow">SMART AI</span><h3>Trợ lý hỏi đáp kế hoạch</h3></div></div><div id="chatLog" class="chat-log"><div class="bubble ai">Xin chào. Tôi có thể trả lời câu hỏi dựa trên các nhiệm vụ đang có trong SMART PLAN.</div></div><div class="chat-input"><input id="chatInput" placeholder="Ví dụ: Ngày mai có những nhiệm vụ gì?"/><button onclick="askAI()">Gửi</button></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
+<div id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
