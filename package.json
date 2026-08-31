@@ -1,0 +1,20 @@
+{
+  "name": "smart-plan-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SMART PLAN - Trợ lý AI quản lý và điều hành kế hoạch công tác tuần",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.16.0",
+    "@supabase/supabase-js": "^2.57.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mammoth": "^1.10.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1"
+  }
+}
