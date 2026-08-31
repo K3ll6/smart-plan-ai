@@ -314,7 +314,7 @@ Trả lời ngắn gọn, rõ ràng bằng tiếng Việt.`;
   }
 });
 
-app.get("*", (req,res) => {
+app.use((req,res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
