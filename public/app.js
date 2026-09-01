@@ -4,6 +4,14 @@ let currentUser=null;
 let registerMode=false;
 
 const $=id=>document.getElementById(id);
+function toast(message){
+  const el=$("toast");
+  el.textContent=message;
+  el.style.display="block";
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer=setTimeout(()=>{el.style.display="none"},4500);
+}
+
 async function api(url,opts={}){
   opts.headers={...(opts.headers||{}),...(token?{Authorization:"Bearer "+token}:{})};
   const r=await fetch(url,opts);
