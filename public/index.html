@@ -7,7 +7,25 @@
 <link rel="stylesheet" href="/style.css"/>
 </head>
 <body>
-<div class="app">
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">SP</div>
+    <span class="eyebrow">SMART PLAN</span>
+    <h1 id="authTitle">Đăng nhập</h1>
+    <p class="auth-sub">Trợ lý AI quản lý và điều hành kế hoạch công tác tuần</p>
+    <div id="authError" class="auth-error"></div>
+    <form id="authForm">
+      <div id="nameWrap" class="field hidden"><label>Họ và tên</label><input id="name" autocomplete="name" placeholder="Ví dụ: Nguyễn Văn A"/></div>
+      <div class="field"><label>Tài khoản</label><input id="username" required autocomplete="username" placeholder="taikhoan"/></div>
+      <div class="field"><label>Mật khẩu</label><input id="password" required type="password" autocomplete="current-password" placeholder="••••••••"/></div>
+      <button class="primary full" type="submit" id="authSubmit">Đăng nhập</button>
+    </form>
+    <button class="switch-auth" id="switchAuth">Chưa có tài khoản? Đăng ký</button>
+    <div class="judge-note">Mỗi thành viên Ban Giám khảo đăng ký một tài khoản riêng. Dữ liệu kế hoạch và nhiệm vụ được tách riêng theo tài khoản.</div>
+  </div>
+</div>
+
+<div id="appScreen" class="app hidden">
   <aside class="sidebar">
     <div class="brand"><div class="logo">SP</div><div><b>SMART PLAN</b><small>Trợ lý AI điều hành</small></div></div>
     <nav>
@@ -17,10 +35,11 @@
       <button class="nav" data-view="ai">✦ SMART AI</button>
     </nav>
     <div class="side-bottom">
+      <div class="user-box"><div class="avatar" id="avatar">U</div><div><b id="userName">Người dùng</b><small id="userAccount"></small></div></div>
+      <button class="logout" onclick="logout()">↪ Đăng xuất</button>
       <div class="status"><span></span><div><b>Hệ thống sẵn sàng</b><small id="sysStatus">Đang kiểm tra...</small></div></div>
     </div>
   </aside>
-
   <main>
     <header>
       <div><span class="eyebrow">QUẢN LÝ KẾ HOẠCH CÔNG TÁC TUẦN</span><h1 id="pageTitle">Tổng quan</h1></div>
@@ -28,33 +47,15 @@
     </header>
 
     <section id="dashboard" class="view active">
-      <div class="hero">
-        <div><span class="pill">AI POWERED</span><h2>Biến kế hoạch thành hành động.</h2><p>Upload kế hoạch Word, PDF hoặc hình ảnh. SMART PLAN tự bóc tách nhiệm vụ, sắp xếp thời gian và hỗ trợ xây dựng hướng tổ chức, triển khai.</p></div>
-        <div class="hero-icon">✦</div>
-      </div>
-      <div class="stats">
-        <div class="stat"><small>TỔNG NHIỆM VỤ</small><strong id="total">0</strong></div>
-        <div class="stat"><small>ƯU TIÊN CAO</small><strong id="high">0</strong></div>
-        <div class="stat"><small>ĐANG THỰC HIỆN</small><strong id="doing">0</strong></div>
-        <div class="stat"><small>HOÀN THÀNH</small><strong id="done">0</strong></div>
-      </div>
+      <div class="hero"><div><span class="pill">AI POWERED</span><h2>Biến kế hoạch thành hành động.</h2><p>Upload kế hoạch Word, PDF hoặc hình ảnh. SMART PLAN tự bóc tách nhiệm vụ, sắp xếp thời gian và hỗ trợ xây dựng hướng tổ chức, triển khai.</p></div><div class="hero-icon">✦</div></div>
+      <div class="stats"><div class="stat"><small>TỔNG NHIỆM VỤ</small><strong id="total">0</strong></div><div class="stat"><small>ƯU TIÊN CAO</small><strong id="high">0</strong></div><div class="stat"><small>ĐANG THỰC HIỆN</small><strong id="doing">0</strong></div><div class="stat"><small>HOÀN THÀNH</small><strong id="done">0</strong></div></div>
       <div class="panel"><div class="panel-head"><div><span class="eyebrow">NEXT UP</span><h3>Nhiệm vụ sắp tới</h3></div><button class="ghost" onclick="showView('tasks')">Xem tất cả →</button></div><div id="nextTasks" class="task-list"></div></div>
     </section>
-
-    <section id="tasks" class="view">
-      <div class="panel"><div class="panel-head"><div><span class="eyebrow">TASK MANAGEMENT</span><h3>Danh sách nhiệm vụ</h3></div><select id="filter" onchange="render()"><option value="ALL">Tất cả</option><option value="HIGH">Ưu tiên cao</option><option value="DOING">Đang thực hiện</option><option value="DONE">Hoàn thành</option></select></div><div id="allTasks" class="task-list"></div></div>
-    </section>
-
-    <section id="timeline" class="view">
-      <div class="panel"><div class="panel-head"><div><span class="eyebrow">TIMELINE</span><h3>Dòng thời gian kế hoạch</h3></div></div><div id="timelineList"></div></div>
-    </section>
-
-    <section id="ai" class="view">
-      <div class="chat panel"><div class="panel-head"><div><span class="eyebrow">SMART AI</span><h3>Trợ lý hỏi đáp kế hoạch</h3></div></div><div id="chatLog" class="chat-log"><div class="bubble ai">Xin chào. Tôi có thể trả lời câu hỏi dựa trên các nhiệm vụ đang có trong SMART PLAN.</div></div><div class="chat-input"><input id="chatInput" placeholder="Ví dụ: Ngày mai có những nhiệm vụ gì?"/><button onclick="askAI()">Gửi</button></div></div>
-    </section>
+    <section id="tasks" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">TASK MANAGEMENT</span><h3>Nhiệm vụ của tôi</h3></div><select id="filter" onchange="render()"><option value="ALL">Tất cả</option><option value="HIGH">Ưu tiên cao</option><option value="DOING">Đang thực hiện</option><option value="DONE">Hoàn thành</option></select></div><div id="allTasks" class="task-list"></div></div></section>
+    <section id="timeline" class="view"><div class="panel"><div class="panel-head"><div><span class="eyebrow">TIMELINE</span><h3>Dòng thời gian kế hoạch của tôi</h3></div></div><div id="timelineList"></div></div></section>
+    <section id="ai" class="view"><div class="chat panel"><div class="panel-head"><div><span class="eyebrow">SMART AI</span><h3>Trợ lý hỏi đáp kế hoạch riêng</h3></div></div><div id="chatLog" class="chat-log"><div class="bubble ai">Xin chào. Tôi chỉ sử dụng dữ liệu kế hoạch của tài khoản đang đăng nhập.</div></div><div class="chat-input"><input id="chatInput" placeholder="Ví dụ: Ngày mai tôi có nhiệm vụ gì?"/><button onclick="askAI()">Gửi</button></div></div></section>
   </main>
 </div>
-
 <div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
 <div id="toast"></div>
 <script src="/app.js"></script>
