@@ -12,7 +12,7 @@ services:
         value: gemini-2.5-flash
       - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_SECRET_KEY
+      - key: SUPABASE_ANON_KEY
         sync: false
-      - key: JWT_SECRET
+      - key: SUPABASE_SECRET_KEY
         sync: false
