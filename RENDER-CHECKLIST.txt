@@ -1,0 +1,26 @@
+SMART PLAN V4.1 – CẤU HÌNH RENDER
+
+SUPABASE_URL
+https://wnuhhndbfafomejdrkop.supabase.co
+
+SUPABASE_SECRET_KEY
+[DÁN SECRET KEY CỦA SUPABASE TẠI ĐÂY TRÊN RENDER, KHÔNG GHI VÀO FILE]
+
+GEMINI_API_KEY
+[API KEY GEMINI CỦA BẠN]
+
+GEMINI_MODEL
+gemini-2.5-flash
+
+JWT_SECRET
+[TỰ ĐẶT CHUỖI BÍ MẬT DÀI]
+
+Sau khi lưu Environment → Deploy latest commit.
+Kiểm tra:
+https://smart-plan-ai.onrender.com/api/health
+
+Mong muốn:
+ok = true
+ai = true
+database = true
+secretKey = true

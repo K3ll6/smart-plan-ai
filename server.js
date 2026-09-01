@@ -32,8 +32,9 @@ const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY})
   : null;
 
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabase = process.env.SUPABASE_URL && SUPABASE_KEY
+  ? createClient(process.env.SUPABASE_URL, SUPABASE_KEY)
   : null;
 
 const memory = { users:[], tasks:[], plans:[] };
@@ -147,7 +148,16 @@ async function callVision(prompt,file){
   return r.text;
 }
 
-app.get("/api/health",(req,res)=>res.json({ok:true,ai:!!ai,database:!!supabase}));
+app.get("/api/health",async(req,res)=>{
+  let db=false;
+  if(supabase){
+    try{
+      const {error}=await supabase.from("users").select("id",{count:"exact",head:true});
+      db=!error;
+    }catch{}
+  }
+  res.json({ok:true,ai:!!ai,database:db,secretKey:!!process.env.SUPABASE_SECRET_KEY});
+});
 
 // AUTH
 app.post("/api/auth/register",async(req,res)=>{

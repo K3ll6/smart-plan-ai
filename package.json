@@ -1,8 +1,8 @@
 {
   "name": "smart-plan-ai",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "description": "SMART PLAN - AI quản lý kế hoạch công tác tuần với tài khoản riêng cho từng người dùng",
+  "description": "SMART PLAN V4.1 - tài khoản riêng, dữ liệu riêng theo người dùng, Supabase Secret Key",
   "type": "module",
   "scripts": {
     "start": "node server.js"
