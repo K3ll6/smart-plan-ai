@@ -1,8 +1,8 @@
 {
   "name": "smart-plan-ai",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
-  "description": "SMART PLAN V4.2 - sửa lỗi upload, thông báo trạng thái, tài khoản và dữ liệu riêng",
+  "description": "SMART PLAN V4.3 - AI chat cách ly dữ liệu theo tài khoản",
   "type": "module",
   "scripts": {
     "start": "node server.js"

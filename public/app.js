@@ -62,7 +62,7 @@ $("authForm").onsubmit=async e=>{
 };
 async function enterApp(){
  $("authScreen").classList.add("hidden");$("appScreen").classList.remove("hidden");
- $("userName").textContent=currentUser?.name||currentUser?.username||"Người dùng";$("userAccount").textContent="@"+(currentUser?.username||"");$("avatar").textContent=(currentUser?.name||currentUser?.username||"U").charAt(0).toUpperCase();
+ $("userName").textContent=currentUser?.name||currentUser?.username||"Người dùng";$("userAccount").textContent="@"+(currentUser?.username||"");$("avatar").textContent=(currentUser?.name||currentUser?.username||"U").charAt(0).toUpperCase();if($("aiScope"))$("aiScope").textContent=`Chỉ truy vấn dữ liệu của @${currentUser?.username||""}`;
  try{tasks=await api("/api/tasks");render();const h=await api("/api/health");$("sysStatus").textContent=(h.ai?"AI đã kết nối":"Chế độ demo AI")+" · "+(h.database?"Database dùng chung":"lưu tạm theo phiên")}
  catch(e){$("sysStatus").textContent="Không tải được dữ liệu"}
 }
@@ -99,9 +99,22 @@ $("file").addEventListener("change",async e=>{
 });
 async function askAI(){
  const input=$("chatInput"),msg=input.value.trim();if(!msg)return;
- const log=$("chatLog");log.innerHTML+=`<div class="bubble user">${esc(msg)}</div>`;input.value="";
- try{const d=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})});log.innerHTML+=`<div class="bubble ai">${esc(d.answer)}</div>`;log.scrollTop=log.scrollHeight}
- catch(e){log.innerHTML+=`<div class="bubble ai">${esc(e.message)}</div>`}
+ const log=$("chatLog");
+ log.innerHTML+=`<div class="bubble user">${esc(msg)}</div>`;
+ input.value="";
+ try{
+   tasks=await api("/api/tasks");
+   render();
+   const d=await api("/api/chat",{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({message:msg})
+   });
+   log.innerHTML+=`<div class="bubble ai">${esc(d.answer)}</div>`;
+   log.scrollTop=log.scrollHeight;
+ }catch(e){
+   log.innerHTML+=`<div class="bubble ai">${esc(e.message)}</div>`;
+ }
 }
 $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")askAI()});
 

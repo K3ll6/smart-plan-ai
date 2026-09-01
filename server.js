@@ -87,7 +87,7 @@ async function getTasks(userId){
     rows=demoTasks(userId);
     memory.tasks.push(...rows);
   }
-  return sortTasks(rows);
+  return sortTasks(rows.filter(x=>String(x.user_id)===String(userId)));
 }
 async function getTask(userId,id){
   const tasks=await getTasks(userId);
@@ -199,7 +199,8 @@ app.post("/api/auth/login",async(req,res)=>{
 app.get("/api/auth/me",auth,async(req,res)=>res.json({user:req.user}));
 
 // TASKS
-app.get("/api/tasks",auth,async(req,res)=>res.json(await getTasks(req.user.id)));
+app.get("/api/tasks",auth,async(req,res)=>res.json((await getTasks(req.user.id)).filter(t=>String(t.user_id)===String(req.user.id))));
+app.get("/api/my-scope",auth,async(req,res)=>res.json({user:req.user,tasks:(await getTasks(req.user.id)).filter(t=>String(t.user_id)===String(req.user.id)).map(t=>({id:t.id,title:t.title,user_id:t.user_id}))}));
 app.get("/api/tasks/:id",auth,async(req,res)=>{
   const t=await getTask(req.user.id,req.params.id);
   if(!t)return res.status(404).json({error:"Không tìm thấy nhiệm vụ"});
@@ -263,13 +264,14 @@ app.post("/api/chat",auth,async(req,res)=>{
     const message=String(req.body?.message||"").trim();
     if(!message)return res.status(400).json({error:"Thiếu câu hỏi"});
     const tasks=await getTasks(req.user.id);
-    if(!ai)return res.json({answer:`Chế độ demo: tài khoản ${req.user.username} đang có ${tasks.length} nhiệm vụ riêng. Cấu hình GEMINI_API_KEY để hỏi AI trực tiếp.`});
+    const ownTasks=tasks.filter(t=>String(t.user_id)===String(req.user.id));
+    if(!ai)return res.json({answer:`Chế độ demo: tài khoản ${req.user.username} đang có ${ownTasks.length} nhiệm vụ riêng. Cấu hình GEMINI_API_KEY để hỏi AI trực tiếp.`});
     const today=new Date().toLocaleDateString("vi-VN",{timeZone:"Asia/Ho_Chi_Minh"});
     const prompt=`Bạn là SMART AI. Người dùng hiện tại là ${req.user.name||req.user.username}. Ngày hiện tại Việt Nam: ${today}.
 Chỉ sử dụng dữ liệu nhiệm vụ RIÊNG của người dùng bên dưới. Không được tiết lộ hay suy đoán dữ liệu của tài khoản khác.
 Khi người dùng nói hôm nay/ngày mai/ngày kia, hãy suy ra ngày cụ thể.
 Dữ liệu:
-${JSON.stringify(tasks,null,2)}
+${JSON.stringify(ownTasks,null,2)}
 Câu hỏi: ${message}
 Trả lời ngắn gọn bằng tiếng Việt.`;
     const r=await ai.models.generateContent({model:process.env.GEMINI_MODEL||"gemini-2.5-flash",contents:prompt});
