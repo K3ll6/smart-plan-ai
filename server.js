@@ -36,7 +36,7 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_K
 
 const memory = {
   plans: [],
-  tasks: []
+  tasks: demoTasks()
 };
 
 function demoTasks() {
@@ -104,8 +104,7 @@ async function getTasks() {
     const { data, error } = await supabase.from("tasks").select("*");
     if (!error && data) return sortTasks(data);
   }
-  if (memory.tasks.length) return sortTasks(memory.tasks);
-  return demoTasks();
+  return sortTasks(memory.tasks);
 }
 
 async function getTask(id) {
@@ -298,8 +297,13 @@ app.post("/api/chat", async (req,res) => {
     if (!ai) {
       return res.json({answer:"Chế độ demo: hãy cấu hình GEMINI_API_KEY để hỏi AI trực tiếp. Hiện hệ thống đang quản lý " + tasks.length + " nhiệm vụ."});
     }
-    const prompt = `Bạn là SMART AI, trợ lý hỏi đáp về kế hoạch công tác. Chỉ sử dụng dữ liệu nhiệm vụ được cung cấp.
-Nếu người dùng hỏi điều không có dữ liệu, nói rõ chưa có dữ liệu.
+    const now = new Date();
+    const today = now.toLocaleDateString("vi-VN", {timeZone:"Asia/Ho_Chi_Minh"});
+    const prompt = `Bạn là SMART AI, trợ lý hỏi đáp về kế hoạch công tác.
+Ngày hiện tại theo múi giờ Việt Nam là ${today}.
+Khi người dùng nói "hôm nay", "ngày mai", "ngày kia", hãy suy ra ngày cụ thể từ ngày hiện tại và đối chiếu với date_text trong dữ liệu.
+Chỉ sử dụng dữ liệu nhiệm vụ được cung cấp; không tự tạo nhiệm vụ.
+Nếu không có nhiệm vụ phù hợp, nói rõ chưa có dữ liệu phù hợp.
 Dữ liệu:
 ${JSON.stringify(tasks, null, 2)}
 Câu hỏi: ${message}

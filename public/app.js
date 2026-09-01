@@ -52,7 +52,15 @@ async function openTask(id){
   document.getElementById("modal").classList.add("show");
 }
 function closeModal(){document.getElementById("modal").classList.remove("show")}
-async function setStatus(id,status){await api("/api/tasks/"+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});tasks=await api("/api/tasks");render();openTask(id);toast("Đã cập nhật trạng thái")}
+async function setStatus(id,status){
+  try{
+    await api("/api/tasks/"+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});
+    tasks=await api("/api/tasks");
+    render();
+    await openTask(id);
+    toast(status==="DONE"?"✓ Đã đánh dấu hoàn thành":status==="DOING"?"Đã chuyển sang đang thực hiện":"Đã cập nhật trạng thái");
+  }catch(e){toast(e.message)}
+}
 async function aiPlan(id){
   const box=document.getElementById("aiResult");box.innerHTML="<div class='ai-section'><b>✦ AI đang phân tích nhiệm vụ...</b></div>";
   try{
