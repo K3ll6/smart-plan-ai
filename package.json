@@ -1,8 +1,8 @@
 {
   "name": "smart-plan-ai",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
-  "description": "SMART PLAN V4.3 - AI chat cách ly dữ liệu theo tài khoản",
+  "description": "SMART PLAN V4.4 - AI context cách ly tuyệt đối theo tài khoản",
   "type": "module",
   "scripts": {
     "start": "node server.js"

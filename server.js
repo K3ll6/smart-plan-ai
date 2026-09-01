@@ -263,20 +263,70 @@ app.post("/api/chat",auth,async(req,res)=>{
   try{
     const message=String(req.body?.message||"").trim();
     if(!message)return res.status(400).json({error:"Thiếu câu hỏi"});
-    const tasks=await getTasks(req.user.id);
-    const ownTasks=tasks.filter(t=>String(t.user_id)===String(req.user.id));
-    if(!ai)return res.json({answer:`Chế độ demo: tài khoản ${req.user.username} đang có ${ownTasks.length} nhiệm vụ riêng. Cấu hình GEMINI_API_KEY để hỏi AI trực tiếp.`});
+
+    // SECURITY BOUNDARY:
+    // 1) Identify the user ONLY from the verified JWT.
+    // 2) Query tasks with user_id = JWT user id.
+    // 3) Build a fresh AI context for this request only.
+    // 4) Never reuse another user's AI context/history.
+    const userId=String(req.user.id);
+    const allOwnTasks=(await getTasks(userId)).filter(t=>String(t.user_id)===userId);
+
+    // Give the model a compact, explicit data boundary.
+    const scopedData=allOwnTasks.map(t=>({
+      id:String(t.id),
+      title:t.title||"",
+      description:t.description||"",
+      date_text:t.date_text||"",
+      time_text:t.time_text||"",
+      location:t.location||"",
+      responsible:t.responsible||"",
+      participants:t.participants||"",
+      priority:t.priority||"",
+      status:t.status||""
+    }));
+
+    if(!ai){
+      return res.json({
+        answer:`Tài khoản @${req.user.username} đang có ${scopedData.length} nhiệm vụ riêng. AI chưa được cấu hình GEMINI_API_KEY.`,
+        scope:req.user.username
+      });
+    }
+
     const today=new Date().toLocaleDateString("vi-VN",{timeZone:"Asia/Ho_Chi_Minh"});
-    const prompt=`Bạn là SMART AI. Người dùng hiện tại là ${req.user.name||req.user.username}. Ngày hiện tại Việt Nam: ${today}.
-Chỉ sử dụng dữ liệu nhiệm vụ RIÊNG của người dùng bên dưới. Không được tiết lộ hay suy đoán dữ liệu của tài khoản khác.
-Khi người dùng nói hôm nay/ngày mai/ngày kia, hãy suy ra ngày cụ thể.
-Dữ liệu:
-${JSON.stringify(ownTasks,null,2)}
-Câu hỏi: ${message}
-Trả lời ngắn gọn bằng tiếng Việt.`;
-    const r=await ai.models.generateContent({model:process.env.GEMINI_MODEL||"gemini-2.5-flash",contents:prompt});
-    res.json({answer:r.text});
-  }catch(e){res.status(500).json({error:e.message||"AI lỗi"})}
+    const prompt=`Bạn là SMART AI của hệ thống SMART PLAN.
+ĐÂY LÀ NGUYÊN TẮC BẮT BUỘC:
+- Tài khoản hiện tại: @${req.user.username} (user_id=${userId}).
+- Ngày hiện tại tại Việt Nam: ${today}.
+- Chỉ được sử dụng thông tin trong khối DU_LIEU_RIENG bên dưới.
+- Tuyệt đối không sử dụng dữ liệu từ tài khoản khác, lịch sử phiên khác, hoặc tự bịa nhiệm vụ.
+- Nếu câu hỏi hỏi về một nhiệm vụ không xuất hiện trong DU_LIEU_RIENG, trả lời: "Tài khoản @${req.user.username} chưa có dữ liệu nhiệm vụ này."
+- Nếu người dùng hỏi "hôm nay/ngày mai/ngày kia", hãy tính ngày cụ thể từ ngày hiện tại rồi đối chiếu date_text.
+- Nếu không có nhiệm vụ phù hợp, nói rõ "Không có nhiệm vụ phù hợp trong dữ liệu của tài khoản @${req.user.username}."
+- Không được tiết lộ user_id hoặc thông tin kỹ thuật bảo mật.
+
+DU_LIEU_RIENG (CHỈ CỦA @${req.user.username}):
+${JSON.stringify(scopedData,null,2)}
+
+CÂU HỎI:
+${message}
+
+Trả lời ngắn gọn, chính xác bằng tiếng Việt.`;
+
+    const r=await ai.models.generateContent({
+      model:process.env.GEMINI_MODEL||"gemini-2.5-flash",
+      contents:prompt
+    });
+
+    res.json({
+      answer:r.text,
+      scope:req.user.username,
+      task_count:scopedData.length
+    });
+  }catch(e){
+    console.error("CHAT_SCOPE_ERROR",e);
+    res.status(500).json({error:e.message||"AI lỗi"});
+  }
 });
 
 app.use((req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));

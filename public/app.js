@@ -63,7 +63,13 @@ $("authForm").onsubmit=async e=>{
 async function enterApp(){
  $("authScreen").classList.add("hidden");$("appScreen").classList.remove("hidden");
  $("userName").textContent=currentUser?.name||currentUser?.username||"Người dùng";$("userAccount").textContent="@"+(currentUser?.username||"");$("avatar").textContent=(currentUser?.name||currentUser?.username||"U").charAt(0).toUpperCase();if($("aiScope"))$("aiScope").textContent=`Chỉ truy vấn dữ liệu của @${currentUser?.username||""}`;
- try{tasks=await api("/api/tasks");render();const h=await api("/api/health");$("sysStatus").textContent=(h.ai?"AI đã kết nối":"Chế độ demo AI")+" · "+(h.database?"Database dùng chung":"lưu tạm theo phiên")}
+ try{
+  tasks=await api("/api/tasks");render();
+  const h=await api("/api/health");
+  const scope=await api("/api/my-scope");
+  if($("aiScope"))$("aiScope").textContent=`Chỉ truy vấn ${scope.task_count} nhiệm vụ của @${scope.user.username}`;
+  $("sysStatus").textContent=(h.ai?"AI đã kết nối":"Chế độ demo AI")+" · "+(h.database?"Database dùng chung":"lưu tạm theo phiên");
+}
  catch(e){$("sysStatus").textContent="Không tải được dữ liệu"}
 }
 function logout(){token="";currentUser=null;localStorage.removeItem("smart_plan_token");$("appScreen").classList.add("hidden");$("authScreen").classList.remove("hidden");setAuthMode(false)}
