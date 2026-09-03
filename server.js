@@ -25,9 +25,54 @@ const upload = multer({
   limits:{fileSize:15*1024*1024}
 });
 
-const ai = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY})
-  : null;
+// Gemini: 1 key chính + nhiều key dự phòng.
+// LƯU Ý: Gemini áp hạn mức theo PROJECT, không theo API key.
+// Vì vậy các key dự phòng nên thuộc các project Gemini khác nhau nếu muốn
+// thực sự có các hạn mức dự phòng độc lập.
+const primaryGeminiKey = String(process.env.GEMINI_API_KEY || "").trim();
+const fallbackGeminiKeys = String(process.env.GEMINI_FALLBACK_KEYS || "")
+  .split(",").map(x=>x.trim()).filter(Boolean);
+const geminiKeys = [primaryGeminiKey, ...fallbackGeminiKeys].filter(Boolean);
+const geminiClients = geminiKeys.map(apiKey=>new GoogleGenAI({apiKey}));
+const judgeUsers = new Set(
+  String(process.env.GEMINI_JUDGE_USERS || "")
+    .split(",").map(x=>x.trim().toLowerCase()).filter(Boolean)
+);
+const fallbackForAllUsers = String(process.env.GEMINI_FALLBACK_ALL || "false").toLowerCase()==="true";
+
+function canUseGeminiFallback(username){
+  return fallbackForAllUsers || judgeUsers.has(String(username||"").trim().toLowerCase());
+}
+
+function isRetryableGeminiError(e){
+  const raw=JSON.stringify(e||{});
+  const status=Number(e?.status||e?.statusCode||e?.code||0);
+  return status===429 || /429|RESOURCE_EXHAUSTED|rate_limit_exceeded|quota_exceeded|too_many_requests/i.test(raw);
+}
+
+async function generateGemini(username, requestFactory){
+  if(!geminiClients.length)return null;
+  const allowFallback=canUseGeminiFallback(username);
+  const maxIndex=allowFallback?geminiClients.length-1:0;
+  let lastError=null;
+
+  for(let i=0;i<=maxIndex;i++){
+    try{
+      const result=await requestFactory(geminiClients[i]);
+      if(i>0)console.log(`Gemini fallback key #${i} activated for @${username}`);
+      return result;
+    }catch(e){
+      lastError=e;
+      const retryable=isRetryableGeminiError(e);
+      console.warn(`Gemini key #${i} failed${retryable?" (quota/rate limit)":""}:`,e?.message||e);
+      // Chỉ tự chuyển key khi gặp lỗi quota/rate-limit. Các lỗi prompt/model/auth
+      // không nên âm thầm xoay key vì thường là lỗi cấu hình chung.
+      if(!retryable || i>=maxIndex)break;
+    }
+  }
+  if(lastError)throw lastError;
+  return null;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -132,25 +177,27 @@ async function extractText(file){
   if(ext===".pdf"){const r=await pdfParse(file.buffer);return r.text}
   return "";
 }
-async function callText(prompt){
-  if(!ai)return null;
-  const r=await ai.models.generateContent({model:process.env.GEMINI_MODEL||"gemini-2.5-flash",contents:prompt,config:{responseMimeType:"application/json"}});
-  return r.text;
+async function callText(prompt,username){
+  const r=await generateGemini(username,client=>client.models.generateContent({
+    model:process.env.GEMINI_MODEL||"gemini-2.5-flash",
+    contents:prompt,
+    config:{responseMimeType:"application/json"}
+  }));
+  return r?.text||null;
 }
-async function callVision(prompt,file){
-  if(!ai)return null;
-  const r=await ai.models.generateContent({
+async function callVision(prompt,file,username){
+  const r=await generateGemini(username,client=>client.models.generateContent({
     model:process.env.GEMINI_MODEL||"gemini-2.5-flash",
     contents:[{role:"user",parts:[{text:prompt},{inlineData:{mimeType:file.mimetype||"image/jpeg",data:file.buffer.toString("base64")}}]}],
     config:{responseMimeType:"application/json"}
-  });
-  return r.text;
+  }));
+  return r?.text||null;
 }
 
 app.get("/api/health",async(req,res)=>{
   let db=false;
   if(supabase){try{const {error}=await supabase.from("tasks").select("id",{count:"exact",head:true});db=!error}catch{}}
-  res.json({ok:true,ai:!!ai,database:db,demoAI:true,aiMode:ai?"REAL":"DEMO",supabaseAuth:!!supabaseAnon});
+  res.json({ok:true,ai:geminiClients.length>0,database:db,demoAI:true,aiMode:geminiClients.length>0?"REAL":"DEMO",supabaseAuth:!!supabaseAnon});
 });
 
 // AUTH - Supabase Auth
@@ -210,7 +257,7 @@ app.post("/api/upload",auth,upload.single("file"),async(req,res)=>{
     if(ai){
       try{
         const prompt=`Bóc tách tài liệu kế hoạch thành nhiệm vụ quản lý. Chỉ lấy dữ liệu có trong tài liệu. Trả JSON {"title":"","tasks":[{"title":"","description":"","date_text":"","time_text":"","location":"","responsible":"","participants":"","priority":"HIGH|NORMAL|LOW"}]}\n${(text||"[Ảnh]").slice(0,60000)}`;
-        parsed=cleanJson(isImage?await callVision(prompt,req.file):await callText(prompt));
+        parsed=cleanJson(isImage?await callVision(prompt,req.file,req.user.username):await callText(prompt,req.user.username));
       }catch(e){console.warn("Gemini upload unavailable, switching to demo:",e.message)}
     }
     if(!parsed){
@@ -229,7 +276,7 @@ app.post("/api/upload",auth,upload.single("file"),async(req,res)=>{
       if(!candidates.length)parsed.tasks=[{title:"Tài liệu cần rà soát",description:"Demo AI chưa thể bóc tách tự động tài liệu phức tạp. Khi Gemini hoạt động, hãy upload lại để AI phân tích đầy đủ.",date_text:"",time_text:"",location:"",responsible:"",participants:"",priority:"NORMAL"}];
     }
     const saved=await savePlanAndTasks(req.user.id,parsed.title||req.file.originalname,req.file.originalname,text||"[Ảnh]",parsed.tasks||[]);
-    res.json({ok:true,title:parsed.title||req.file.originalname,count:saved.length,tasks:sortTasks(saved),ai:!!ai,mode:ai?"REAL_AI":"DEMO_AI"});
+    res.json({ok:true,title:parsed.title||req.file.originalname,count:saved.length,tasks:sortTasks(saved),ai:geminiClients.length>0,mode:geminiClients.length>0?"REAL_AI":"DEMO_AI"});
   }catch(e){console.error(e);res.status(500).json({error:e.message||"Lỗi xử lý tài liệu"})}
 });
 
@@ -248,7 +295,7 @@ app.post("/api/tasks/:id/ai-plan",auth,async(req,res)=>{
     if(ai){
       try{
         const prompt=`Phân tích nhiệm vụ sau để đề xuất hướng tổ chức, triển khai. Không bịa dữ kiện. Trả JSON gồm objective, forces, steps, checklist, risks, suggestions.\n${JSON.stringify(task,null,2)}`;
-        const parsed=cleanJson(await callText(prompt));
+        const parsed=cleanJson(await callText(prompt,req.user.username));
         if(parsed){await updateTask(req.user.id,req.params.id,{ai_plan:parsed});return res.json({...parsed,source:"REAL_AI"});}
       }catch(e){console.warn("Gemini unavailable, switching to demo AI:",e.message)}
     }
@@ -284,11 +331,14 @@ app.post("/api/chat",auth,async(req,res)=>{
       return res.json({answer:p.length?`Có ${p.length} nhiệm vụ ưu tiên cao:\n`+p.map((t,i)=>`${i+1}. ${t.title} — ${t.date_text||"chưa có ngày"}`).join("\n"):"Không có nhiệm vụ ưu tiên cao.",source:"DB"});
     }
 
-    if(ai){
+    if(geminiClients.length){
       try{
         const prompt=`Bạn là SMART PLAN AI. Chỉ dùng dữ liệu của tài khoản @${req.user.username}. Không dùng dữ liệu ngoài. Ngày hiện tại Việt Nam: ${fmt(now)}.\nDỮ LIỆU:\n${JSON.stringify(tasks,null,2)}\nCÂU HỎI:\n${message}\nTrả lời tiếng Việt ngắn gọn.`;
-        const r=await ai.models.generateContent({model:process.env.GEMINI_MODEL||"gemini-2.5-flash",contents:prompt});
-        return res.json({answer:r.text,source:"REAL_AI"});
+        const r=await generateGemini(req.user.username,client=>client.models.generateContent({
+          model:process.env.GEMINI_MODEL||"gemini-2.5-flash",
+          contents:prompt
+        }));
+        if(r?.text)return res.json({answer:r.text,source:"REAL_AI"});
       }catch(e){console.warn("Gemini chat unavailable, switching to demo:",e.message)}
     }
     res.json({answer:`@${req.user.username}: Gemini hiện không khả dụng hoặc đã hết quota. Bạn vẫn có thể dùng tra cứu nhiệm vụ, ngày/thứ, trạng thái, ưu tiên và chức năng hướng tổ chức ở chế độ Demo AI.`,source:"DEMO_AI"});
