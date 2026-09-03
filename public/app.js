@@ -91,10 +91,24 @@ async function deleteTask(id){
  try{await api("/api/tasks/"+encodeURIComponent(id),{method:"DELETE"});tasks=await api("/api/tasks");render();closeModal();toast("✓ Đã xóa nhiệm vụ")}
  catch(e){toast(e.message)}
 }
+function asList(value){
+ if(Array.isArray(value)) return value;
+ if(value==null || value==="") return [];
+ if(typeof value==="string") return [value];
+ if(typeof value==="object") return Object.entries(value).map(([k,v])=>typeof v==="string"?`${k}: ${v}`:JSON.stringify(v));
+ return [String(value)];
+}
+function asForces(value){
+ if(Array.isArray(value)) return value;
+ if(value && typeof value==="object") return Object.entries(value).map(([role,unit])=>({role,unit:String(unit??"")}));
+ return [];
+}
 async function aiPlan(id){
  const box=$("aiResult");box.innerHTML="<div class='ai-section'><b>✦ AI đang phân tích nhiệm vụ...</b></div>";
- try{const d=await api("/api/tasks/"+encodeURIComponent(id)+"/ai-plan",{method:"POST"});
- box.innerHTML=`<div class="ai-section"><h4>🎯 Mục tiêu</h4><ul>${(d.objective||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div><div class="ai-section"><h4>👥 Lực lượng</h4><ul>${(d.forces||[]).map(x=>`<li><b>${esc(x.role)}:</b> ${esc(x.unit)}</li>`).join("")}</ul></div><div class="ai-section"><h4>🧭 Các bước tiến hành</h4><ol>${(d.steps||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div><div class="ai-section"><h4>☑ Checklist</h4>${(d.checklist||[]).map(x=>`<label class="check"><input type="checkbox"/> ${esc(x)}</label>`).join("")}</div><div class="ai-section"><h4>⚠ Rủi ro cần lưu ý</h4><ul>${(d.risks||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div><div class="ai-section"><h4>💡 Đề xuất của AI</h4><ul>${(d.suggestions||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`;
+ try{
+  const d=await api("/api/tasks/"+encodeURIComponent(id)+"/ai-plan",{method:"POST"});
+  const objective=asList(d.objective), forces=asForces(d.forces), steps=asList(d.steps), checklist=asList(d.checklist), risks=asList(d.risks), suggestions=asList(d.suggestions);
+  box.innerHTML=`<div class="ai-section"><h4>🎯 Mục tiêu</h4>${objective.length?`<ul>${objective.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"<p>Chưa có dữ liệu.</p>"}</div><div class="ai-section"><h4>👥 Lực lượng</h4>${forces.length?`<ul>${forces.map(x=>`<li><b>${esc(x.role||"Lực lượng")}:</b> ${esc(x.unit||"")}</li>`).join("")}</ul>`:"<p>Chưa xác định.</p>"}</div><div class="ai-section"><h4>🧭 Các bước tiến hành</h4>${steps.length?`<ol>${steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>`:"<p>Chưa có dữ liệu.</p>"}</div><div class="ai-section"><h4>☑ Checklist</h4>${checklist.length?checklist.map(x=>`<label class="check"><input type="checkbox"/> ${esc(x)}</label>`).join(""):"<p>Chưa có checklist.</p>"}</div><div class="ai-section"><h4>⚠ Rủi ro cần lưu ý</h4>${risks.length?`<ul>${risks.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"<p>Chưa có dữ liệu.</p>"}</div><div class="ai-section"><h4>💡 Đề xuất của AI</h4>${suggestions.length?`<ul>${suggestions.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"<p>Chưa có dữ liệu.</p>"}</div>`;
  }catch(e){box.innerHTML=`<div class="ai-section" style="color:#a73737">${esc(e.message)}</div>`}
 }
 $("file").addEventListener("change",async e=>{
